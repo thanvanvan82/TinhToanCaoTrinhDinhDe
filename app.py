@@ -38,27 +38,22 @@ KINEMATIC_VISCOSITY_V = 1e-5  # ν = 10^-5 m²/s
 
 @st.cache_data
 def interpolate_dmax(speed: float | None, dmax_df: pd.DataFrame) -> tuple[float | None, str]:
-    """Nội suy giá trị Dmax từ tốc độ gió w."""
     if speed is None or not isinstance(speed, (int, float)) or speed <= 0:
         return None, "Vui lòng nhập tốc độ gió hợp lệ."
-
     speeds = dmax_df['w (m/s)'].values
     dmaxs = dmax_df['Dmax (km)'].values
-
     if speed < speeds[0]:
         return dmaxs[0], "Ngoại suy, lấy theo giá trị biên thấp nhất."
     if speed > speeds[-1]:
         return dmaxs[-1], "Ngoại suy, lấy theo giá trị biên cao nhất."
-    
     interpolated_value = np.interp(speed, speeds, dmaxs)
     return float(interpolated_value), "Giá trị nội suy."
 
 def calculate_d_wide(speed: float | None) -> float | None:
-    """Tính toán Đà gió D cho vùng nước rộng."""
     if speed is None or not isinstance(speed, (int, float)) or speed <= 0:
         return None
     d_meters = 5e11 * (KINEMATIC_VISCOSITY_V / speed)
-    return d_meters / 1000  # Chuyển sang km
+    return d_meters / 1000
 
 # --- GIAO DIỆN NGƯỜI DÙNG (UI) ---
 
@@ -88,7 +83,7 @@ calculation_case = st.radio(
 )
 st.divider()
 
-# --- BƯỚC 3: Xác định Dmax (Đưa lên trước để lấy wind_speed) ---
+# --- BƯỚC 3: Xác định Dmax ---
 st.header("BƯỚC 3: XÁC ĐỊNH ĐÀ GIÓ LỚN NHẤT CHO PHÉP (Dmax)")
 col1, col2 = st.columns([1, 2])
 with col1:
@@ -97,7 +92,8 @@ with col1:
         min_value=0.1,
         value=None,
         step=0.5,
-        format="%.2f m/s",
+        # SỬA LỖI: Xóa đơn vị " m/s" khỏi chuỗi format
+        format="%.2f",
         placeholder="Ví dụ: 27.5"
     )
     dmax_result, dmax_note = interpolate_dmax(wind_speed, DMAX_DF)
@@ -123,7 +119,13 @@ if calculation_case == "Vùng nước hẹp (Tính De)":
     edited_df = st.data_editor(
         input_df,
         column_config={
-            "Đà gió ri (km)": st.column_config.NumberColumn("Đà gió ri (km)", help="Nhập đà gió theo tia xạ (đơn vị km)", min_value=0.0, format="%.3f km"),
+            "Đà gió ri (km)": st.column_config.NumberColumn(
+                "Đà gió ri (km)",
+                help="Nhập đà gió theo tia xạ (đơn vị km)",
+                min_value=0.0,
+                # SỬA LỖI: Xóa đơn vị " km" khỏi chuỗi format
+                format="%.3f"
+            ),
             "Tia xạ": st.column_config.NumberColumn(disabled=True),
             "Góc αi (độ)": st.column_config.NumberColumn(disabled=True),
             "cos(αi)": st.column_config.NumberColumn(disabled=True),
@@ -178,5 +180,4 @@ with st.container(border=True):
         else:
             st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
     else:
-        # SỬA LỖI: Thêm dấu " và ) bị thiếu
         st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận.")
