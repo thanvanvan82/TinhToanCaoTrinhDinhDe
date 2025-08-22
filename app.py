@@ -4,7 +4,7 @@ import numpy as np
 
 # --- Cấu hình trang ---
 st.set_page_config(
-    page_title="Công cụ tính toán Đà gió Toàn diện",
+    page_title="Công cụ tính toán đà gió",
     page_icon="💨",
     layout="wide"
 )
@@ -92,7 +92,6 @@ with col1:
         min_value=0.1,
         value=None,
         step=0.5,
-        # SỬA LỖI: Xóa đơn vị " m/s" khỏi chuỗi format
         format="%.2f",
         placeholder="Ví dụ: 27.5"
     )
@@ -102,7 +101,7 @@ with col1:
         st.metric("Dmax nội suy", f"{dmax_result:.3f} km", delta=dmax_note, delta_color="off")
 
 with col2:
-    st.markdown("**Bảng E.3 - Giá trị tra cứu (Tham khảo)**")
+    st.markdown("**Bảng E.3 - Giá trị tra cứu (Tham khảo TCVN 9901:2023)**")
     st.dataframe(DMAX_DF, hide_index=True, use_container_width=True)
 st.divider()
 
@@ -123,7 +122,6 @@ if calculation_case == "Vùng nước hẹp (Tính De)":
                 "Đà gió ri (km)",
                 help="Nhập đà gió theo tia xạ (đơn vị km)",
                 min_value=0.0,
-                # SỬA LỖI: Xóa đơn vị " km" khỏi chuỗi format
                 format="%.3f"
             ),
             "Tia xạ": st.column_config.NumberColumn(disabled=True),
@@ -181,5 +179,6 @@ with st.container(border=True):
             st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
     else:
         st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận.")
+
 
 
