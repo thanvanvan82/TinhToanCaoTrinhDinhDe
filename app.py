@@ -84,7 +84,7 @@ calculation_case = st.radio(
 st.divider()
 
 # --- BƯỚC 2: Xác định Dmax ---
-st.header("BƯỚC 3: XÁC ĐỊNH ĐÀ GIÓ LỚN NHẤT CHO PHÉP (Dmax)")
+st.header("BƯỚC 2: XÁC ĐỊNH ĐÀ GIÓ LỚN NHẤT CHO PHÉP (Dmax)")
 col1, col2 = st.columns([1, 2])
 with col1:
     wind_speed = st.number_input(
@@ -108,7 +108,7 @@ st.divider()
 
 
 # --- BƯỚC 3: Nhập liệu và tính toán De hoặc D ---
-st.header("BƯỚC 2: NHẬP DỮ LIỆU VÀ TÍNH TOÁN")
+st.header("BƯỚC 3: NHẬP DỮ LIỆU VÀ TÍNH TOÁN")
 d_final = None
 
 if calculation_case == "Vùng nước hẹp (Tính De)":
@@ -181,4 +181,5 @@ with st.container(border=True):
             st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
     else:
         st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận.")
+
 
