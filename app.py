@@ -1,85 +1,200 @@
-# app.py
 import streamlit as st
 import pandas as pd
-import io
-
-# Import logic tính toán đã được rút gọn
-from calculator import main_workflow_song, list_de_song, ri_data_list
+import numpy as np
 
 # --- Cấu hình trang ---
 st.set_page_config(
-    page_title="Tính toán Cao trình Đê Sông",
-    page_icon="🌊",
+    page_title="Công cụ tính toán Đà gió Toàn diện",
+    page_icon="💨",
     layout="wide"
 )
 
-# --- Hàm tiện ích cho UI (đã tối ưu) ---
-@st.cache_data
-def to_csv(df):
-    """Chuyển DataFrame thành file CSV trong bộ nhớ."""
-    return df.to_csv(index=False).encode('utf-8')
+# --- DỮ LIỆU VÀ HẰNG SỐ ---
+# Dữ liệu bảng tra cứu Dmax
+DMAX_TABLE_DATA = {
+    'w (m/s)': [20, 25, 30, 40, 50],
+    'Dmax (km)': [1600, 1200, 600, 200, 100]
+}
+DMAX_DF = pd.DataFrame(DMAX_TABLE_DATA)
 
-# --- Giao diện chính ---
-st.title("🌊 Hệ thống Tính toán Cao trình Đê Sông")
-st.markdown("Ứng dụng web cho phép nhập thông số, tính toán và trực quan hóa cao trình đỉnh đê sông.")
+# Dữ liệu các tia xạ cho trường hợp vùng nước hẹp
+RAY_DATA = [
+    {'Tia xạ': -6, 'Góc αi (độ)': -45.0}, {'Tia xạ': -5, 'Góc αi (độ)': -37.5},
+    {'Tia xạ': -4, 'Góc αi (độ)': -30.0}, {'Tia xạ': -3, 'Góc αi (độ)': -22.5},
+    {'Tia xạ': -2, 'Góc αi (độ)': -15.0}, {'Tia xạ': -1, 'Góc αi (độ)': -7.5},
+    {'Tia xạ': 0, 'Góc αi (độ)': 0.0}, {'Tia xạ': 1, 'Góc αi (độ)': 7.5},
+    {'Tia xạ': 2, 'Góc αi (độ)': 15.0}, {'Tia xạ': 3, 'Góc αi (độ)': 22.5},
+    {'Tia xạ': 4, 'Góc αi (độ)': 30.0}, {'Tia xạ': 5, 'Góc αi (độ)': 37.5},
+    {'Tia xạ': 6, 'Góc αi (độ)': 45.0}
+]
+RAY_DF = pd.DataFrame(RAY_DATA)
+RAY_DF['cos(αi)'] = np.cos(np.deg2rad(RAY_DF['Góc αi (độ)']))
+RAY_DF['cos²(αi)'] = RAY_DF['cos(αi)']**2
+
+# Hằng số vật lý
+KINEMATIC_VISCOSITY_V = 1e-5  # ν = 10^-5 m²/s
+
+# --- CÁC HÀM TÍNH TOÁN ---
+
+@st.cache_data
+def interpolate_dmax(speed: float, dmax_df: pd.DataFrame) -> tuple[float | None, str]:
+    """Nội suy giá trị Dmax từ tốc độ gió w."""
+    if speed is None or speed <= 0:
+        return None, "Vui lòng nhập tốc độ gió hợp lệ."
+
+    speeds = dmax_df['w (m/s)'].values
+    dmaxs = dmax_df['Dmax (km)'].values
+
+    if speed < speeds[0]:
+        return dmaxs[0], "Ngoại suy, lấy theo giá trị biên thấp nhất."
+    if speed > speeds[-1]:
+        return dmaxs[-1], "Ngoại suy, lấy theo giá trị biên cao nhất."
+    
+    # Sử dụng hàm nội suy tuyến tính của NumPy
+    interpolated_value = np.interp(speed, speeds, dmaxs)
+    return float(interpolated_value), "Giá trị nội suy."
+
+def calculate_d_wide(speed: float) -> float | None:
+    """Tính toán Đà gió D cho vùng nước rộng."""
+    if speed is None or speed <= 0:
+        return None
+    d_meters = 5e11 * (KINEMATIC_VISCOSITY_V / speed)
+    return d_meters / 1000  # Chuyển sang km
+
+# --- GIAO DIỆN NGƯỜI DÙNG (UI) ---
+
+st.title("💨 CÔNG CỤ TÍNH TOÁN ĐÀ GIÓ TOÀN DIỆN")
+st.markdown("Chuyển thể từ ứng dụng HTML/JS sang Python với Streamlit để tính toán, nội suy và kiểm tra điều kiện Đà gió.")
 st.divider()
 
-st.header("1. Nhập dữ liệu đầu vào")
-st.markdown("Chỉnh sửa trực tiếp dữ liệu trong bảng dưới đây hoặc thêm/xóa hàng. Cột `chiều dài của các tia xạ (m)` sẽ luôn được sử dụng dữ liệu mặc định.")
+# --- Thông tin chung ---
+with st.container(border=True):
+    st.subheader("📋 THÔNG TIN CHUNG")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.text_input("Dự án:", placeholder="Nhập tên dự án")
+        st.text_input("Hạng mục:", placeholder="Nhập hạng mục")
+    with col2:
+        st.text_input("Vị trí tính toán:", placeholder="Nhập vị trí tính toán")
+        st.number_input("Hướng gió chính (độ):", min_value=0.0, max_value=360.0, step=1.0, value=0.0)
+st.divider()
 
-# Khởi tạo DataFrame từ dữ liệu mặc định
-df_input_song_default = pd.DataFrame(list_de_song)
-# Chuyển list thành string để hiển thị, vì data_editor không hỗ trợ list
-df_input_song_default['chiều dài của các tia xạ (m)'] = str(ri_data_list)
 
-# Sử dụng st.data_editor để tạo bảng có thể chỉnh sửa
-edited_df_song = st.data_editor(
-    df_input_song_default,
-    num_rows="dynamic",
-    key="editor_song"
+# --- BƯỚC 1: Lựa chọn trường hợp tính toán ---
+st.header("BƯỚC 1: LỰA CHỌN TRƯỜNG HỢP TÍNH TOÁN")
+calculation_case = st.radio(
+    "Chọn phương pháp tính Đà gió:",
+    ["Vùng nước hẹp (Tính De)", "Vùng nước rộng (Tính D)"],
+    horizontal=True,
+    label_visibility="collapsed"
 )
+st.divider()
 
-# --- Nút tính toán và hiển thị kết quả ---
-st.header("2. Thực hiện tính toán")
-if st.button("🚀 Bắt đầu tính toán", type="primary", use_container_width=True):
-    if edited_df_song.empty:
-        st.warning("Vui lòng nhập ít nhất một hàng dữ liệu để tính toán.")
+
+# --- BƯỚC 2: Nhập liệu và tính toán De hoặc D ---
+st.header("BƯỚC 2: NHẬP DỮ LIỆU VÀ TÍNH TOÁN")
+d_final = None # Biến lưu kết quả đà gió cuối cùng
+
+# Trường hợp 1: Vùng nước hẹp
+if calculation_case == "Vùng nước hẹp (Tính De)":
+    st.info("Nhập giá trị Đà gió `ri` (đơn vị: km) cho từng tia xạ vào bảng dưới đây.")
+    
+    # Tạo DataFrame để người dùng nhập liệu
+    input_df = RAY_DF.copy()
+    input_df.insert(3, 'Đà gió ri (km)', 0.0) # Thêm cột nhập liệu
+    
+    # Sử dụng st.data_editor để tạo bảng có thể chỉnh sửa
+    edited_df = st.data_editor(
+        input_df,
+        column_config={
+            # Cấu hình cột nhập liệu
+            "Đà gió ri (km)": st.column_config.NumberColumn(
+                "Đà gió ri (km)",
+                help="Nhập đà gió theo tia xạ (đơn vị km)",
+                min_value=0.0,
+                format="%.3f km",
+            ),
+            # Vô hiệu hóa chỉnh sửa các cột khác
+            "Tia xạ": st.column_config.NumberColumn(disabled=True),
+            "Góc αi (độ)": st.column_config.NumberColumn(disabled=True),
+            "cos(αi)": st.column_config.NumberColumn(disabled=True),
+            "cos²(αi)": st.column_config.NumberColumn(disabled=True),
+        },
+        hide_index=True,
+        key="de_editor"
+    )
+
+    # Tính toán De từ dữ liệu đã nhập
+    edited_df['ri × cos²(αi)'] = edited_df['Đà gió ri (km)'] * edited_df['cos²(αi)']
+    
+    numerator_sum = edited_df['ri × cos²(αi)'].sum()
+    denominator_sum = edited_df['cos(αi)'].sum() # Tính toán động thay vì hardcode
+    de_result = numerator_sum / denominator_sum if denominator_sum != 0 else 0
+    d_final = de_result
+
+    # Hiển thị kết quả tính toán De
+    st.subheader("🎯 KẾT QUẢ TÍNH TOÁN (De)")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Tổng tử số (Σ ri×cos²αi)", f"{numerator_sum:.3f} km")
+    col2.metric("Tổng mẫu số (Σ cosαi)", f"{denominator_sum:.3f}")
+    col3.metric("ĐÀ GIÓ TƯƠNG ĐƯƠNG (De)", f"{de_result:.3f} km")
+
+
+# Trường hợp 2: Vùng nước rộng
+else:
+    st.info("Đà gió trung bình (D) sẽ được tự động tính ở **BƯỚC 3** sau khi bạn nhập Tốc độ gió (w). Công thức sử dụng: **D = 5 x 10¹¹ x (ν / w)**.")
+    # Ta sẽ tính toán D ở bước 3
+st.divider()
+
+
+# --- BƯỚC 3: Xác định Dmax ---
+st.header("BƯỚC 3: XÁC ĐỊNH ĐÀ GIÓ LỚN NHẤT CHO PHÉP (Dmax)")
+col1, col2 = st.columns([1, 2])
+with col1:
+    wind_speed = st.number_input(
+        "Nhập Tốc độ gió tính toán (w, m/s):",
+        min_value=0.1,
+        value=None, # Để trống ban đầu
+        step=0.5,
+        format="%.2f m/s",
+        placeholder="Ví dụ: 27.5"
+    )
+    dmax_result, dmax_note = interpolate_dmax(wind_speed, DMAX_DF)
+    
+    if dmax_result is not None:
+        st.metric("Dmax nội suy", f"{dmax_result:.3f} km", delta=dmax_note, delta_color="off")
+
+with col2:
+    st.markdown("**Bảng E.3 - Giá trị tra cứu (Tham khảo)**")
+    st.dataframe(DMAX_DF, hide_index=True, use_container_width=True)
+
+# Tính toán D cho trường hợp vùng nước rộng bây giờ
+if calculation_case == "Vùng nước rộng (Tính D)":
+    d_wide_result = calculate_d_wide(wind_speed)
+    d_final = d_wide_result
+    st.subheader("🎯 KẾT QUẢ TÍNH TOÁN (D)")
+    if d_wide_result is not None:
+        st.metric("Đà gió trung bình tính toán (D)", f"{d_wide_result:.3f} km")
     else:
-        with st.spinner("Đang thực hiện các phép tính..."):
-            
-            # Gán lại giá trị list tia xạ chuẩn cho mọi hàng trước khi tính
-            # Vì người dùng không thể nhập list một cách dễ dàng qua UI
-            df_for_calculation = edited_df_song.copy()
-            df_for_calculation['chiều dài của các tia xạ (m)'] = [ri_data_list] * len(df_for_calculation)
+        st.warning("Nhập tốc độ gió ở trên để tính D.")
+st.divider()
 
-            # Chạy workflow chính (phiên bản rút gọn)
-            df_ket_qua_song = main_workflow_song(df_for_calculation)
 
-            st.success("✅ Tính toán hoàn tất!")
-            st.divider()
+# --- BƯỚC 4: Kiểm tra và Kết luận ---
+st.header("BƯỚC 4: KIỂM TRA & KẾT LUẬN")
 
-            st.header("3. Kết quả tính toán")
-            
-            # Hiển thị bảng kết quả
-            st.subheader("Bảng kết quả chi tiết")
-            st.dataframe(df_ket_qua_song)
+d_type_label = "De" if calculation_case == "Vùng nước hẹp (Tính De)" else "D"
 
-            # Hiển thị biểu đồ (dùng hàm có sẵn của Streamlit)
-            st.subheader("Biểu đồ so sánh cao trình đỉnh đê")
-            
-            # Chuẩn bị dữ liệu cho biểu đồ
-            df_chart = df_ket_qua_song.set_index('tuyến đê sông')[['Zđs (m)']]
-            st.bar_chart(df_chart)
+with st.container(border=True):
+    st.markdown(f"""
+    - **Đà gió tính toán ({d_type_label}):** `{d_final:.3f} km`
+    - **Đà gió lớn nhất cho phép (Dmax):** `{dmax_result:.3f} km` (nếu có)
+    - **Điều kiện kiểm tra:** `{d_type_label} ≤ Dmax`
+    """)
 
-            # Nút tải xuống file CSV
-            csv_data = to_csv(df_ket_qua_song)
-            st.download_button(
-                label="📥 Tải xuống kết quả (CSV)",
-                data=csv_data,
-                file_name="ket_qua_tinh_toan_de_song.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-            
-            # Lưu kết quả vào session state để không bị mất khi re-run
-            st.session_state.result = df_ket_qua_song
+    if wind_speed is None or d_final is None:
+        st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri hoặc Tốc độ gió w) để có kết luận.")
+    elif d_final <= dmax_result:
+        st.success(f"**KẾT LUẬN: PHÙ HỢP** ({d_final:.3f} km ≤ {dmax_result:.3f} km)")
+    else:
+        st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
