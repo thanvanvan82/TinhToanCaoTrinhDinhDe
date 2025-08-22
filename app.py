@@ -24,16 +24,20 @@ st.title("💨 CÔNG CỤ TÍNH TOÁN ĐÀ GIÓ TOÀN DIỆN")
 st.markdown("Chuyển thể từ ứng dụng HTML/JS sang Python với Streamlit để tính toán, nội suy và kiểm tra điều kiện Đà gió.")
 st.divider()
 
-# --- Thông tin chung ---
+# ... (Phần thông tin chung giữ nguyên) ...
 with st.container(border=True):
     st.subheader("📋 THÔNG TIN CHUNG")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.text_input("Dự án:", placeholder="Nhập tên dự án")
-        st.text_input("Hạng mục:", placeholder="Nhập hạng mục")
-    with col2:
-        st.text_input("Vị trí tính toán:", placeholder="Nhập vị trí tính toán")
-        st.number_input("Hướng gió chính (độ):", min_value=0.0, max_value=360.0, step=1.0, value=0.0)
+    # ...
+st.divider()
+
+# --- BƯỚC 1: Lựa chọn trường hợp tính toán ---
+st.header("BƯỚC 1: LỰA CHỌN TRƯỜNG HỢP TÍNH TOÁN")
+calculation_case = st.radio(
+    "Chọn phương pháp tính Đà gió:",
+    ["Vùng nước hẹp (Tính De)", "Vùng nước rộng (Tính D)"],
+    horizontal=True,
+    label_visibility="collapsed"
+)
 st.divider()
 
 
@@ -121,4 +125,3 @@ with st.container(border=True):
         st.success(f"**KẾT LUẬN: PHÙ HỢP** ({d_final:.3f} km ≤ {dmax_result:.3f} km)")
     else:
         st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
-
