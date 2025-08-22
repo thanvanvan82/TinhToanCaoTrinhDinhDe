@@ -39,7 +39,6 @@ KINEMATIC_VISCOSITY_V = 1e-5  # ν = 10^-5 m²/s
 @st.cache_data
 def interpolate_dmax(speed: float | None, dmax_df: pd.DataFrame) -> tuple[float | None, str]:
     """Nội suy giá trị Dmax từ tốc độ gió w."""
-    # SỬA LỖI: Xử lý đầu vào là None
     if speed is None or not isinstance(speed, (int, float)) or speed <= 0:
         return None, "Vui lòng nhập tốc độ gió hợp lệ."
 
@@ -56,7 +55,6 @@ def interpolate_dmax(speed: float | None, dmax_df: pd.DataFrame) -> tuple[float 
 
 def calculate_d_wide(speed: float | None) -> float | None:
     """Tính toán Đà gió D cho vùng nước rộng."""
-    # SỬA LỖI: Xử lý đầu vào là None
     if speed is None or not isinstance(speed, (int, float)) or speed <= 0:
         return None
     d_meters = 5e11 * (KINEMATIC_VISCOSITY_V / speed)
@@ -149,7 +147,7 @@ if calculation_case == "Vùng nước hẹp (Tính De)":
 else: # Vùng nước rộng
     st.info("Đà gió trung bình (D) được tự động tính dựa trên Tốc độ gió (w) bạn đã nhập ở **BƯỚC 3**. Công thức sử dụng: **D = 5 x 10¹¹ x (ν / w)**.")
     d_wide_result = calculate_d_wide(wind_speed)
-    d_final = d_wide_result # Gán kết quả, có thể là None
+    d_final = d_wide_result
 
     st.subheader("🎯 KẾT QUẢ TÍNH TOÁN (D)")
     if d_wide_result is not None:
@@ -165,7 +163,6 @@ st.header("BƯỚC 4: KIỂM TRA & KẾT LUẬN")
 d_type_label = "De" if calculation_case == "Vùng nước hẹp (Tính De)" else "D"
 
 with st.container(border=True):
-    # SỬA LỖI: Tạo các chuỗi hiển thị an toàn, xử lý trường hợp None
     d_final_str = f"{d_final:.3f}" if d_final is not None else "-"
     dmax_result_str = f"{dmax_result:.3f}" if dmax_result is not None else "-"
 
@@ -175,11 +172,11 @@ with st.container(border=True):
     - **Điều kiện kiểm tra:** `{d_type_label} ≤ Dmax`
     """)
 
-    # SỬA LỖI: Chỉ thực hiện so sánh khi cả hai giá trị đều hợp lệ
     if d_final is not None and dmax_result is not None:
         if d_final <= dmax_result:
             st.success(f"**KẾT LUẬN: PHÙ HỢP** ({d_final:.3f} km ≤ {dmax_result:.3f} km)")
         else:
             st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
     else:
-        st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận
+        # SỬA LỖI: Thêm dấu " và ) bị thiếu
+        st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận.")
