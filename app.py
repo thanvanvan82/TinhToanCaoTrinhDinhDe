@@ -57,7 +57,7 @@ def calculate_d_wide(speed: float | None) -> float | None:
 
 # --- GIAO DIỆN NGƯỜI DÙNG (UI) ---
 
-st.title("💨 CÔNG CỤ TÍNH TOÁN ĐÀ GIÓ TOÀN DIỆN")
+st.title("💨 CÔNG CỤ TÍNH TOÁN ĐÀ GIÓ")
 st.markdown("Chuyển thể từ ứng dụng HTML/JS sang Python với Streamlit để tính toán, nội suy và kiểm tra điều kiện Đà gió.")
 st.divider()
 
@@ -179,6 +179,7 @@ with st.container(border=True):
             st.error(f"**KẾT LUẬN: KHÔNG PHÙ HỢP** ({d_final:.3f} km > {dmax_result:.3f} km)")
     else:
         st.warning("Vui lòng nhập đủ dữ liệu (Đà gió ri và/hoặc Tốc độ gió w) để có kết luận.")
+
 
 
 
